@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "newsbr"
+version = "0.1.0"
+description = "Brazilian news collection toolkit: discover, fetch, store article evidence"
+requires-python = ">=3.10"
+dependencies = [
+    "requests>=2.28",
+    "html2text>=2020.1.16",
+    "beautifulsoup4>=4.12",
+    "lxml>=4.9",
+]
+
+[project.optional-dependencies]
+cookies = ["rookiepy>=0.5"]
+playwright = ["playwright>=1.40"]
+
+[project.scripts]
+newsbr = "newsbr.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["newsbr*"]
