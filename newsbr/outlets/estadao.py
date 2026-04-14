@@ -2,47 +2,51 @@
 
 Estadão's paywall is JS-only — full article text is in the initial HTML
 response as <p> tags. Simple HTTP requests work without executing JS.
-Discovery via topic pages + RSS, fallback to Google News.
+
+Discovery: RSS feed by default (filters items by query keyword in title).
+Topic-page crawling is available via discover_topic() but is opt-in —
+each topic page is project-specific and shouldn't be wired into the
+default search path.
 """
 
 import re
 from typing import Optional
 
-from newsbr import google_news
 from newsbr.http import make_session
 from newsbr.schema import Article
 
 NAME = "Estadao"
 DOMAIN = "estadao.com.br"
 STATUS = "working"
-SEARCH = "topic+rss"
+SEARCH = "rss"
 
-TOPIC_PAGES = [
-    "https://www.estadao.com.br/tudo-sobre/nepotismo/",
-    "https://www.estadao.com.br/tudo-sobre/stf/",
-    "https://www.estadao.com.br/tudo-sobre/judiciario/",
-    "https://www.estadao.com.br/tudo-sobre/corrupcao/",
-]
 RSS_URL = "https://www.estadao.com.br/arc/outboundfeeds/rss/?outputType=xml"
 
 
-def search(query: str, max_pages: int = 1) -> list[Article]:
-    """Discover via topic pages + RSS, filtered by query keyword tokens.
-    Estadão has no public query-string search API."""
+def search(query: str, max_pages: int = 1, topic_pages: Optional[list[str]] = None) -> list[Article]:
+    """Discover Estadão articles relevant to a query.
+
+    By default scans only the site-wide RSS feed and filters items whose
+    titles contain any query token of length ≥ 4. Pass `topic_pages` to
+    additionally crawl one or more `tudo-sobre/<topic>/` pages — useful
+    for project-specific beats. Topic-page results are filtered by URL
+    slug match against the same tokens, which is noisier than RSS title
+    matching, so use sparingly.
+    """
     keywords = _query_to_keywords(query)
     if not keywords:
         return []
     seen = set()
     out = []
-    for topic in TOPIC_PAGES:
-        for url in discover_topic(topic, keywords):
-            if url not in seen:
-                seen.add(url)
-                out.append(Article(url=url, outlet=NAME))
     for url in discover_rss(keywords):
         if url not in seen:
             seen.add(url)
             out.append(Article(url=url, outlet=NAME))
+    for topic in (topic_pages or []):
+        for url in discover_topic(topic, keywords):
+            if url not in seen:
+                seen.add(url)
+                out.append(Article(url=url, outlet=NAME))
     return out
 
 
@@ -69,6 +73,14 @@ def discover_topic(topic_url: str, keywords: list[str]) -> list[str]:
 
 
 def discover_rss(keywords: list[str]) -> list[str]:
+    """Scan the Estadão RSS feed for items whose title matches the query.
+
+    To suppress single-keyword false positives (e.g. a query token like
+    `massa` matching an immigration headline), require at least two
+    distinct query tokens in the title — or all tokens, if the query
+    has fewer than two. URL paths under nutrition/lifestyle subsections
+    are also dropped.
+    """
     session = make_session()
     try:
         resp = session.get(RSS_URL, timeout=30)
@@ -76,14 +88,20 @@ def discover_rss(keywords: list[str]) -> list[str]:
     except Exception:
         return []
     items = re.findall(r"<item>(.*?)</item>", resp.text, re.DOTALL)
+    min_match = max(1, min(2, len(keywords)))
     out = []
     for item in items:
         title_m = re.search(r"<title><!\[CDATA\[(.*?)\]\]></title>", item)
         link_m = re.search(r"<link>(https://[^<]+)</link>", item)
-        if title_m and link_m:
-            title = title_m.group(1).lower()
-            if not keywords or any(k in title for k in keywords):
-                out.append(link_m.group(1))
+        if not (title_m and link_m):
+            continue
+        link = link_m.group(1)
+        if any(seg in link for seg in ("/pulsa/", "/web-stories/", "/nutricao/")):
+            continue
+        title = title_m.group(1).lower()
+        matches = sum(1 for k in keywords if k in title)
+        if matches >= min_match:
+            out.append(link)
     return out
 
 
