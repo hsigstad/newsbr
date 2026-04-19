@@ -51,3 +51,26 @@ python -m newsbr outlets
 
 Outlets without a dedicated module fall back to Google News RSS with a
 `site:` filter.
+
+## Status
+
+Research tooling — used across my own projects. Not packaged for general
+use; APIs may change as the projects evolve.
+
+## Related repos
+
+Part of a set of repositories I use across my research projects:
+
+- [research-kit](https://github.com/hsigstad/research-kit) — Claude Code
+  skills, conventions, methodology docs, tools (includes the `/anecdotes`
+  skill that drives this package)
+- [diarios](https://github.com/hsigstad/diarios) — Brazilian
+  official-diary parsing
+- [llmkit](https://github.com/hsigstad/llmkit) — LLM extraction toolkit
+  with caching and audit
+- [brazil-institutions](https://github.com/hsigstad/brazil-institutions) —
+  institutional reference for Brazil-focused research
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).
