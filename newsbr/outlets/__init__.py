@@ -16,7 +16,7 @@ from importlib import import_module
 from typing import Optional
 
 # Order matters for default --outlets list
-OUTLET_NAMES = ["conjur", "migalhas", "estadao", "globo", "folha", "piaui"]
+OUTLET_NAMES = ["conjur", "migalhas", "estadao", "globo", "folha", "jota", "piaui"]
 
 
 def get(name: str):
